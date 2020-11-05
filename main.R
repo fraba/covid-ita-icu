@@ -83,47 +83,48 @@ prediction <-
   predict(fit,
           newdata = data.frame(day = 1:diffdays))
 
-dat_nationwide %>%
-  ggplot(aes(x=day, y = icu_patients)) +
-  geom_line() + 
-  geom_point(size = .5) +
-  theme_bw() +
-  labs(title = sprintf("COVID-19 ICU patients (Italy, updated %s)", updated_on), 
-       caption = "1st wave peak on 3 Apr 2020,\n24 days after nation-wide lockdown",
-       x = NULL, y = NULL) +
-  
-  annotate("rect", xmin=as.Date("2020-03-09"), 
-           xmax=as.Date("2020-04-03"),
-           ymax = Inf, 
-           ymin=0,
-           fill="red", alpha=0.3) +
-  
-  annotate("rect", xmin=updated_on, 
-           xmax=updated_on+24,
-           ymax = Inf, 
-           ymin=0,
-           fill="blue", alpha=0.3) +
-  
-  geom_vline(xintercept = as.Date("2020-04-03"),
-             linetype = 2) +
-  geom_hline(yintercept = sum(icu_sole24ore_14oct$ICU.today)) +
-  annotate("text", x = as.Date("2020-07-01"), 
-           y = sum(icu_sole24ore_14oct$ICU.today) + 300,
-           label = sprintf("Current ICU capacity = %s", 
-                           sum(icu_sole24ore_14oct$ICU.today))) +
-  geom_hline(yintercept = sum(icu_sole24ore_14oct$ICU.today) +
-               sum(icu_sole24ore_14oct$ICU.extra.planned)) +
-  annotate("text", x = as.Date("2020-07-01"), 
-           y = sum(icu_sole24ore_14oct$ICU.today) +
-             sum(icu_sole24ore_14oct$ICU.extra.planned) + 300,
-           label = sprintf("Planned ICU capacity = %s", 
-                           sum(icu_sole24ore_14oct$ICU.today) + 
-                             sum(icu_sole24ore_14oct$ICU.extra.planned))) +
-  geom_line(data = data.frame(icu_patients = prediction,
-                              day = seq(as.Date("2020-07-01"),
-                                        length.out = diffdays,
-                                        by = 1)),
-            colour = 'red')
+ggsave(filename = "line.png", width = 10, height = 5,
+       dat_nationwide %>%
+         ggplot(aes(x=day, y = icu_patients)) +
+         geom_line() + 
+         geom_point(size = .5) +
+         theme_bw() +
+         labs(title = sprintf("COVID-19 ICU patients (Italy, updated on %s)", updated_on), 
+              caption = "1st wave peak on 3 Apr 2020,\n24 days after nation-wide lockdown\nSources: Protezione civile, Il Sole 24 Ore; Code: git.io/JTAiO",
+              x = NULL, y = NULL) +
+         
+         annotate("rect", xmin=as.Date("2020-03-09"), 
+                  xmax=as.Date("2020-04-03"),
+                  ymax = Inf, 
+                  ymin=0,
+                  fill="red", alpha=0.3) +
+         
+         annotate("rect", xmin=updated_on, 
+                  xmax=updated_on+24,
+                  ymax = Inf, 
+                  ymin=0,
+                  fill="blue", alpha=0.3) +
+         
+         geom_vline(xintercept = as.Date("2020-04-03"),
+                    linetype = 2) +
+         geom_hline(yintercept = sum(icu_sole24ore_14oct$ICU.today)) +
+         annotate("text", x = as.Date("2020-07-01"), 
+                  y = sum(icu_sole24ore_14oct$ICU.today) + 300,
+                  label = sprintf("Current ICU capacity = %s", 
+                                  sum(icu_sole24ore_14oct$ICU.today))) +
+         geom_hline(yintercept = sum(icu_sole24ore_14oct$ICU.today) +
+                      sum(icu_sole24ore_14oct$ICU.extra.planned)) +
+         annotate("text", x = as.Date("2020-07-01"), 
+                  y = sum(icu_sole24ore_14oct$ICU.today) +
+                    sum(icu_sole24ore_14oct$ICU.extra.planned) + 300,
+                  label = sprintf("Planned ICU capacity = %s", 
+                                  sum(icu_sole24ore_14oct$ICU.today) + 
+                                    sum(icu_sole24ore_14oct$ICU.extra.planned))) +
+         geom_line(data = data.frame(icu_patients = prediction,
+                                     day = seq(as.Date("2020-07-01"),
+                                               length.out = diffdays,
+                                               by = 1)),
+                   colour = 'red'))
   
 
 # Regional models
@@ -255,22 +256,23 @@ dat_sumstats_prediction$Regione <-
   regioni$denominazione_regione[match(dat_sumstats_prediction$codice_regione,
                                       regioni$codice_regione)]
 
-ggplot(dat_sumstats_prediction %>%
-         filter(day < as.Date("2020-11-25")), 
-       aes(x=day,y=factor(Regione, 
-                          levels = 
-                            rev(regioni$denominazione_regione[order(regioni$codice_regione)])))) +
-  geom_tile(aes(fill = icu_covid_perc)) +
-  scale_fill_distiller(palette = "Spectral", direction = -1,
-                       label = percent) +
-  labs(x = NULL, y = NULL, title = "COVID-19 patients on total ICU capacity",
-       fill = "regional capacity",
-      source: "Protezione civile, Sole 24ore") +
-  theme_bw() +
-  geom_vline(xintercept = updated_on, alpha = .5) +
-  geom_point(data  = regional_overcapacity_on.df %>%
-               dplyr::filter(date < as.Date("2020-11-25")),
-             aes(x = date, y = name, shape = "1")) +
-  scale_shape_manual(name = NULL, 
-                      values = 1, labels = "100% capacity reached")
+ggsave(filename = "heatmap.png", width = 10, height = 5,
+       ggplot(dat_sumstats_prediction %>%
+                filter(day < as.Date("2020-11-25")), 
+              aes(x=day,y=factor(Regione, 
+                                 levels = 
+                                   rev(regioni$denominazione_regione[order(regioni$codice_regione)])))) +
+         geom_tile(aes(fill = icu_covid_perc)) +
+         scale_fill_distiller(palette = "Spectral", direction = -1,
+                              label = percent) +
+         labs(x = NULL, y = NULL, title = sprintf("COVID-19 patients on total ICU capacity, updated on %s", updated_on),
+              fill = "regional capacity",
+              caption = "Sources: Protezione civile, Il Sole 24 Ore; Code: git.io/JTAiO") +
+         theme_bw() +
+         geom_vline(xintercept = updated_on, alpha = .5) +
+         geom_point(data  = regional_overcapacity_on.df %>%
+                      dplyr::filter(date < as.Date("2020-11-25")),
+                    aes(x = date, y = name, shape = "1")) +
+         scale_shape_manual(name = NULL, 
+                            values = 1, labels = "100% capacity reached"))
   
