@@ -107,6 +107,10 @@ ggsave(filename = "line.png", width = 10, height = 5,
          
          geom_vline(xintercept = as.Date("2020-04-03"),
                     linetype = 2) +
+         geom_hline(yintercept = sum(icu_sole24ore_14oct$ICU.today * .3)) +
+         annotate("text", x = as.Date("2020-07-01"), 
+                  y = sum(icu_sole24ore_14oct$ICU.today * .3) + 300,
+                  label = "30% of current ICU capacity") +
          geom_hline(yintercept = sum(icu_sole24ore_14oct$ICU.today)) +
          annotate("text", x = as.Date("2020-07-01"), 
                   y = sum(icu_sole24ore_14oct$ICU.today) + 300,
