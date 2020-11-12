@@ -916,7 +916,7 @@ color.sf <-
 ggsave(filename = "map-prov.png", width = 10, height = 9,
        ggplot(prov.sf) + 
          geom_sf(aes(fill = nuovi_casi_per10k_mar7)) +
-         scale_fill_distiller(palette = "YlGnBu", direction = 1) +
+         scale_fill_distiller(palette = "YlGn", direction = 1) +
          geom_sf(data = color.sf, fill = NA, 
                  aes(colour = colore_regione),
                  size = 1.5, alpha = .85) +
