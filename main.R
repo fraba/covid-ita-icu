@@ -826,4 +826,105 @@ ggsave(filename = "heatmap_deaths.png", width = 10, height = 5,
                             labels = c("current model",
                                        "last week model")) +
          guides(shape=guide_legend(title="100% capacity reached")))
+
+
+# Casi / Provincia
+dat <- 
+  read.csv("https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-province/dpc-covid19-ita-province.csv") %>%
+  dplyr::mutate(date = as.Date(data)) %>%
+  dplyr::group_by(denominazione_provincia) %>%
+  dplyr::arrange() %>%
+  dplyr::mutate(nuovi_casi = totale_casi - lag(totale_casi))
+
+dat$sigla_provincia[is.na(dat$sigla_provincia)] <- "NA"
+
+province_pop <- 
+  read.csv("province-pop.csv", skip = 1) %>%
+  dplyr::filter(Età == "Totale") %>%
+  dplyr::mutate(tot = Totale.Femmine + Totale.Maschi) %>%
+  dplyr::select(Provincia = Provincia, pop = tot)
+
+province_pop$Provincia[province_pop$Provincia == "Bolzano/Bozen"] <- "Bolzano"
+province_pop$Provincia[province_pop$Provincia == "Valle d'Aosta/Vallée d'Aoste"] <- "Aosta"
+province_pop$Provincia[province_pop$Provincia == "Massa-Carrara"] <- "Massa Carrara"
+
+dat$pop <- 
+  province_pop$pop[match(dat$denominazione_provincia,
+                         province_pop$Provincia)]
+
+require(zoo)
+
+dat <- 
+  dat %>%
+  dplyr::group_by(sigla_provincia) %>%
+  dplyr::mutate(nuovi_casi_per10k_mar7 = rollmean(nuovi_casi / (pop / 10000), 
+                                                  7, 
+                                                  align = "right",
+                                                  fill = NA)) %>%
+  dplyr::filter(!is.na(pop) & date == max(date))
+
+dat$sigla_provincia <-
+  factor(dat$sigla_provincia, 
+         levels = dat$sigla_provincia[order(dat$nuovi_casi_per10k_mar7, decreasing = T)])
+
+dat$colore_regione <- "giallo"
+dat$colore_regione[dat$denominazione_regione %in% 
+                     c("Valle d'Aosta", "Piemonte", "Lombardia",
+                       "Calabria")] <- "rosso"
+dat$colore_regione[dat$denominazione_regione %in% 
+                     c("Puglia", "Sicilia", "Liguria", "Toscana", 
+                     "Umbria", "Abruzzo", "Basilicata")] <- "arancione"
+dat$colore_regione[dat$denominazione_provincia %in% 
+                     c("Bolzano")] <- "rosso"
+dat$colore_regione <- 
+  factor(dat$colore_regione, levels = c("giallo","arancione","rosso"))
+
+ggsave(filename = "bar.png", width = 11, height = 8,
+       dat %>% 
+         ggplot(aes(x = sigla_provincia, y =  nuovi_casi_per10k_mar7)) +
+         geom_bar(stat = 'identity', aes(fill = colore_regione)) +
+         scale_fill_manual(labels = c("scenario 2", "scenario 3", "scenario 4"),
+                           values = c("#ffff99", "#ff7f00", "#e31a1c")) +
+         theme_bw() +
+         labs(x = sprintf('nuovi casi per 10,000 abitanti (%s, media mobile 7 giorni)', 
+                          format(max(dat$date), format = "%d %b")), y = NULL,
+              fill = "colore regione (11 Nov)") +
+         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+               legend.position = "bottom"))
+
+unique(dat$denominazione_provincia[is.na(dat$pop)])
+
+prop.table(table(dat$colore_regione[dat$nuovi_casi_per10k_mar7 >
+                                      quantile(dat$nuovi_casi_per10k_mar7, p = .8)]))
+
+
+require(sf)
+prov.sf <- 
+  read_sf("../covid-ita-mobility/ProvCM01012020_g/ProvCM01012020_g_WGS84.shp")
+
+prov.sf <- 
+  merge(prov.sf,
+        dat,
+        by.x = "SIGLA", 
+        by.y = "sigla_provincia")
+
+color.sf <- 
+  prov.sf %>%
+  dplyr::group_by(colore_regione) %>%
+  dplyr::summarize(mean = mean(nuovi_casi_per10k_mar7))
+
+ggsave(filename = "map-prov.png", width = 10, height = 9,
+       ggplot(prov.sf) + 
+         geom_sf(aes(fill = nuovi_casi_per10k_mar7)) +
+         scale_fill_distiller(palette = "YlGnBu", direction = 1) +
+         geom_sf(data = color.sf, fill = NA, 
+                 aes(colour = colore_regione),
+                 size = 1.5, alpha = .85) +
+         scale_color_manual(labels = c("scenario 2", "scenario 3", "scenario 4"),
+                           values = c("#ffff99", "#ff7f00", "#e31a1c")) +
+         labs(fill = sprintf("nuovi casi per 10mila abitanti\n(%s, media mobile 7 giorni)",
+                             format(max(dat$date), format = "%d %b")),
+              colour = NULL) +
+         theme_bw()) 
+
   
